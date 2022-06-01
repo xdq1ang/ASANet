@@ -1,0 +1,11 @@
+*.jpg
+*.png
+*.pt
+*.pth
+*.zip
+*.rar
+*.tif
+*.json
+*.tar
+datasets/gta5
+datasets/cityscapes_list/cityscapes

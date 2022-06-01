@@ -21,7 +21,8 @@ from utils.loss import WeightedBCEWithLogitsLoss
 from datasets.gta5_dataset import GTA5DataSet
 from datasets.cityscapes_dataset import cityscapesDataSet
 from options import gta5asa_opt
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 args = gta5asa_opt.get_arguments()
 
 
@@ -31,8 +32,8 @@ def loss_calc(pred, label):
     """
     # out shape batch_size x channels x h x w -> batch_size x channels x h x w
     # label shape h x w x 1 x batch_size  -> batch_size x 1 x h x w
-    label = label.long().cuda()
-    criterion = CrossEntropy2d().cuda()
+    label = label.long().to(device)
+    criterion = CrossEntropy2d().to(device)
     return criterion(pred, label)
 
 def lr_poly(base_lr, iter, max_iter, power):
@@ -67,7 +68,7 @@ def main():
         model = Deeplab_Res101(num_classes=args.num_classes)
     if args.resume:
         print("Resuming from ==>>", args.resume)
-        state_dict = torch.load(args.resume)
+        state_dict = torch.load(args.resume,map_location=torch.device(device))
         model.load_state_dict(state_dict)
     else:
         if args.restore_from[:4] == 'http':
@@ -84,13 +85,13 @@ def main():
                 # print i_parts
         model.load_state_dict(new_params)
     model.train()
-    model.cuda()
+    model.to(device)
     cudnn.benchmark = True
 
     # init D
     model_D = EightwayASADiscriminator(num_classes=args.num_classes)
     model_D.train()
-    model_D.cuda()
+    model_D.to(device)
 
     print(model_D)
     pprint(vars(args))
@@ -169,7 +170,7 @@ def main():
         pred = pred.detach()
         D_out = model_D(F.softmax(pred, dim=1))
         loss_D1 = bce_loss(D_out, torch.FloatTensor(
-            D_out.data.size()).fill_(source_label).cuda())
+            D_out.data.size()).fill_(source_label).to(device))
         loss_D1 = loss_D1 / 2
         loss_D1.backward()
         loss_D_value += loss_D1.item()
@@ -177,7 +178,7 @@ def main():
         pred_target = pred_target.detach()
         D_out1 = model_D(F.softmax(pred_target, dim=1))
         loss_D1 = bce_loss(D_out1, torch.FloatTensor(
-            D_out1.data.size()).fill_(target_label).cuda())
+            D_out1.data.size()).fill_(target_label).to(device))
         loss_D1 = loss_D1 / 2
         loss_D1.backward()
         loss_D_value += loss_D1.item()
@@ -213,4 +214,5 @@ def main():
 
 
 if __name__ == '__main__':
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     main()
