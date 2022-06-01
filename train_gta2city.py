@@ -4,6 +4,8 @@ import os.path as osp
 import random
 from pprint import pprint
 import timeit
+from tkinter import Image
+from matplotlib import transforms
 
 import torch
 import torch.nn as nn
@@ -21,6 +23,7 @@ from utils.loss import WeightedBCEWithLogitsLoss
 from datasets.gta5_dataset import GTA5DataSet
 from datasets.cityscapes_dataset import cityscapesDataSet
 from options import gta5asa_opt
+from utils.utils import colorize_mask
 #from tensorboardX import SummaryWriter
 from torch.utils.tensorboard import SummaryWriter
 args = gta5asa_opt.get_arguments()
@@ -194,6 +197,11 @@ def main():
             writer.add_scalar('learning_rate', lr, i_iter)
             writer.add_scalars("Loss", {
                                "Seg": loss_seg_value, "Adv": loss_adv_target_value, "Disc": loss_D_value}, i_iter)
+            pred_pic = torch.argmax(pred,dim=1).cpu().detach().numpy().squeeze()
+            pred_pic = colorize_mask(pred_pic).convert('RGB')
+            #pred_pic.show()
+            pred_pic = np.array(pred_pic)
+            writer.add_image("pred",pred_pic,dataformats="HWC",global_step = i_iter)
             loss_seg_value = 0
             loss_adv_target_value = 0
             loss_D_value = 0
