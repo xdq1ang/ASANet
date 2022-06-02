@@ -20,14 +20,15 @@ from networks.deeplab import Deeplab_Res101
 from networks.deeplab_vgg import DeeplabVGG
 from networks.fcn8s import VGG16_FCN8s
 from datasets.cityscapes_dataset import cityscapesDataSet
+from utils.utils import colorize_mask
 import timeit
 BACKBONE = 'resnet'
 IGNORE_LABEL = 255
 NUM_CLASSES = 19
-LOG_DIR = 'snapshots/klasa'
+LOG_DIR = 'snapshots/PPMASANet'
 DATA_DIRECTORY = 'datasets/cityscapes'
 DATA_LIST_PATH = 'datasets/cityscapes_list/val.txt'
-RESTORE_FROM = 'snapshots/klasa/GTA5KLASA_15000.pth'
+RESTORE_FROM = 'snapshots/PPMASANet/GTA5KLASA_15000.pth'
 # imageNet mean
 
 CLASS_NAMES = [
@@ -65,6 +66,8 @@ def get_arguments():
                         help="Whether to randomly mirror the inputs during the training.")
     parser.add_argument("--split", type=str, default='val',
                         help="Whether to randomly mirror the inputs during the training.")
+    parser.add_argument("--pred-pic", type=str, default=LOG_DIR+"/pred_pic",
+                        help="the save path of pred_pic")
     return parser.parse_args()
 
 
@@ -174,6 +177,9 @@ def main():
     model.eval()
     model.cuda()
 
+    if not os.path.exists(args.pred_pic):
+        os.makedirs(args.pred_pic)
+
     test_loader = cityscapesDataSet(root=args.data_dir, list_path=args.list_path, set=args.split, img_size=(
         2048, 1024), norm=False, ignore_label=args.ignore_label)
     test_loader = DataLoader(test_loader, batch_size=1,
@@ -190,7 +196,8 @@ def main():
             h, w), mode='bilinear', align_corners=True)
         pred = predict(model, image.cuda(), (1024, 2048),
                        is_mirror=args.is_mirror, scales=[1])
-        # seg_pred = np.asarray(np.argmax(pred, axis=2), dtype=np.uint8)
+        seg_pred_pic = colorize_mask(pred)
+        seg_pred_pic.save(args.pred_pic+"/"+str(index)+".png")
         seg_pred = np.asarray(pred, dtype=np.uint8)
         seg_gt = np.asarray(label[0].numpy(), dtype=np.int)
         ignore_index = seg_gt != 255
