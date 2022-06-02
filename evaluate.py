@@ -24,10 +24,10 @@ import timeit
 BACKBONE = 'resnet'
 IGNORE_LABEL = 255
 NUM_CLASSES = 19
-LOG_DIR = './logs'
-DATA_DIRECTORY = '/path/to/cityscapes'
-DATA_LIST_PATH = './datasets/cityscapes_list/val.txt'
-RESTORE_FROM = 'pretrained/'
+LOG_DIR = 'snapshots/klasa'
+DATA_DIRECTORY = 'datasets/cityscapes'
+DATA_LIST_PATH = 'datasets/cityscapes_list/val.txt'
+RESTORE_FROM = 'snapshots/klasa/GTA5KLASA_15000.pth'
 # imageNet mean
 
 CLASS_NAMES = [
@@ -177,7 +177,7 @@ def main():
     test_loader = cityscapesDataSet(root=args.data_dir, list_path=args.list_path, set=args.split, img_size=(
         2048, 1024), norm=False, ignore_label=args.ignore_label)
     test_loader = DataLoader(test_loader, batch_size=1,
-                             shuffle=False, num_workers=4)
+                             shuffle=False, num_workers=1)
     confusion_matrix = np.zeros((args.num_classes, args.num_classes))
     pbar = tqdm(enumerate(test_loader))
     print("len loader:", len(test_loader))
