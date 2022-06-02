@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from utils.utils import eightway_affinity_kld, fourway_affinity_kld
+from networks.PPM import PPM
 
 
 class FCDiscriminator(nn.Module):
@@ -41,9 +42,9 @@ class EightwayASADiscriminator(nn.Module):
             ndf*2, ndf*4, kernel_size=4, stride=2, padding=1)
         self.conv4 = nn.Conv2d(
             ndf*4, ndf*8, kernel_size=4, stride=2, padding=1)
-        # self.pam = PAM_Module(512)
+        self.ppm = PPM(ndf*8,64,[1,2,3,6])
         self.classifier = nn.Conv2d(
-            ndf*8, 1, kernel_size=4, stride=2, padding=1)
+            ndf*8+ndf*4, 1, kernel_size=4, stride=2, padding=1)
         self.leaky_relu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
     def forward(self, x):
@@ -56,6 +57,7 @@ class EightwayASADiscriminator(nn.Module):
         x = self.leaky_relu(x)
         x = self.conv4(x)
         x = self.leaky_relu(x)
+        x = self.ppm(x)
         x = self.classifier(x)
         return x
 
