@@ -17,6 +17,7 @@ import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
 
 from networks.deeplab import Deeplab_Res101
+from networks.unet import UNet
 from networks.discriminator import EightwayASADiscriminator
 from utils.loss import CrossEntropy2d
 from utils.loss import WeightedBCEWithLogitsLoss
@@ -69,24 +70,26 @@ def main():
     # Create network
     if args.backbone == 'resnet':
         model = Deeplab_Res101(num_classes=args.num_classes)
+    elif args.backbone == "unet":
+        model = UNet(n_classes=args.num_classes)
     if args.resume:
         print("Resuming from ==>>", args.resume)
         state_dict = torch.load(args.resume,map_location=torch.device(device))
         model.load_state_dict(state_dict)
-    else:
-        if args.restore_from[:4] == 'http':
-            saved_state_dict = model_zoo.load_url(args.restore_from)
-        else:
-            saved_state_dict = torch.load(args.restore_from)
-        new_params = model.state_dict().copy()
-        for i in saved_state_dict:
-            # Scale.layer5.conv2d_list.3.weight
-            i_parts = i.split('.')
-            # print i_parts
-            if not args.num_classes == 19 or not i_parts[1] == 'layer5':
-                new_params['.'.join(i_parts[1:])] = saved_state_dict[i]
-                # print i_parts
-        model.load_state_dict(new_params)
+    # else:
+    #     if args.restore_from[:4] == 'http':
+    #         saved_state_dict = model_zoo.load_url(args.restore_from)
+    #     else:
+    #         saved_state_dict = torch.load(args.restore_from)
+    #     new_params = model.state_dict().copy()
+    #     for i in saved_state_dict:
+    #         # Scale.layer5.conv2d_list.3.weight
+    #         i_parts = i.split('.')
+    #         # print i_parts
+    #         if not args.num_classes == 19 or not i_parts[1] == 'layer5':
+    #             new_params['.'.join(i_parts[1:])] = saved_state_dict[i]
+    #             # print i_parts
+    #     model.load_state_dict(new_params)
     model.train()
     model.to(device)
     cudnn.benchmark = True
@@ -100,26 +103,42 @@ def main():
     pprint(vars(args))
     if not os.path.exists(args.snapshot_dir):
         os.makedirs(args.snapshot_dir)
-    trainloader = data.DataLoader(
-        GTA5DataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.batch_size,
-                    img_size=input_size),
-        batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+    trainloader = data.DataLoader(GTA5DataSet(args.data_dir, 
+                                            args.data_list, 
+                                            max_iters=args.num_steps * args.batch_size,
+                                            img_size=input_size),
+                                            batch_size=args.batch_size, 
+                                            shuffle=False, 
+                                            num_workers=args.num_workers, 
+                                            pin_memory=True)
     trainloader_iter = enumerate(trainloader)
-    targetloader = data.DataLoader(cityscapesDataSet(args.data_dir_target, args.data_list_target,
-                                                     max_iters=args.num_steps * args.batch_size,
-                                                     img_size=input_size_target,
-                                                     set=args.set),
-                                   batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
-                                   pin_memory=True)
+    targetloader = data.DataLoader(cityscapesDataSet(args.data_dir_target, 
+                                                    args.data_list_target,
+                                                    max_iters=args.num_steps * args.batch_size,
+                                                    img_size=input_size_target,
+                                                    set=args.set),
+                                                    batch_size=args.batch_size, 
+                                                    shuffle=False, 
+                                                    num_workers=args.num_workers,
+                                                    pin_memory=True)
     targetloader_iter = enumerate(targetloader)
     # implement model.optim_parameters(args) to handle different models' lr setting
-    optimizer = optim.SGD(model.optim_parameters(args),
-                          lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
+    # optimizer = optim.SGD(model.optim_parameters(args),
+    #                       lr=args.learning_rate, 
+    #                       momentum=args.momentum, 
+    #                       weight_decay=args.weight_decay)
+
+    optimizer = optim.SGD(model.parameters(),
+                        lr=args.learning_rate, 
+                        momentum=args.momentum, 
+                        weight_decay=args.weight_decay)
     optimizer.zero_grad()
 
-    optimizer_D = optim.Adam(model_D.parameters(
-    ), lr=args.learning_rate_D, betas=(0.9, 0.99))
+    optimizer_D = optim.Adam(model_D.parameters(), 
+                            lr=args.learning_rate_D, 
+                            betas=(0.9, 0.99))
     optimizer_D.zero_grad()
+
     bce_loss = torch.nn.BCEWithLogitsLoss()
     weight_bce_loss = WeightedBCEWithLogitsLoss()
     interp = nn.Upsample(

@@ -1,8 +1,8 @@
 import argparse
 
 
-METHOD = 'klasa'
-BACKBONE = 'resnet'
+METHOD = 'unet'
+BACKBONE = 'unet'   # resnet
 BATCH_SIZE = 1
 ITER_SIZE = 1
 NUM_WORKERS = 8
@@ -10,7 +10,7 @@ DATA_DIRECTORY = 'datasets/gta5'
 DATA_LIST_PATH = './datasets/gta5_list/train.txt'
 PSEUDO_ROOT = 'results/cityscapes_pseudo_CE80000'
 IGNORE_LABEL = 255
-INPUT_SIZE = '512,300'
+INPUT_SIZE = '512,256'
 DATA_DIRECTORY_TARGET = 'datasets/cityscapes'
 DATA_LIST_PATH_TARGET = './datasets/cityscapes_list/train.txt'
 INPUT_SIZE_TARGET = '1024,512'
@@ -24,8 +24,7 @@ NUM_STEPS_STOP = 15900  # early stopping
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = 'pretrained/GTA5_init.pth'
-RESUME = ''
-RESUME = 'pretrained/GTA5_init.pth'
+RESUME = False
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 2500
 SNAPSHOT_DIR = './snapshots/'
