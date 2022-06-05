@@ -208,7 +208,7 @@ def main():
         optimizer_D.step()
         current = timeit.default_timer()
 
-        if i_iter % 50 == 0:
+        if i_iter % 30 == 0:
             print(
                 'iter = {0:6d}/{1:6d}, loss_seg1 = {2:.3f}  loss_adv1 = {3:.3f}, loss_D1 = {4:.3f} ({5:.3f}/iter)'.format(
                     i_iter, args.num_steps, loss_seg_value/50,  loss_adv_target_value/50, loss_D_value/50, (current - start) / (i_iter+1))

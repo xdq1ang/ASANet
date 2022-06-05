@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from torch.autograd import Variable
 import torchvision.models as models
+from networks.unet import UNet
 
 from networks.deeplab import Deeplab_Res101
 from networks.deeplab_vgg import DeeplabVGG
@@ -22,13 +23,13 @@ from networks.fcn8s import VGG16_FCN8s
 from datasets.cityscapes_dataset import cityscapesDataSet
 from utils.utils import colorize_mask
 import timeit
-BACKBONE = 'resnet'
+BACKBONE = 'unet'
 IGNORE_LABEL = 255
 NUM_CLASSES = 19
-LOG_DIR = 'snapshots/PPMASANet'
+LOG_DIR = 'snapshots/unet'
 DATA_DIRECTORY = 'datasets/cityscapes'
 DATA_LIST_PATH = 'datasets/cityscapes_list/val.txt'
-RESTORE_FROM = 'snapshots/PPMASANet/GTA5KLASA_15000.pth'
+RESTORE_FROM = 'snapshots/unet/GTA5KLASA_15000.pth'
 # imageNet mean
 
 CLASS_NAMES = [
@@ -170,6 +171,8 @@ def main():
         model = Deeplab_Res101(num_classes=args.num_classes)
     elif args.backbone == 'vgg':
         model = DeeplabVGG(num_classes=args.num_classes)
+    elif args.backbone == "unet":
+        model = UNet(n_classes=args.num_classes)    
     else:
         model = VGG16_FCN8s(num_classes=args.num_classes)
     saved_state_dict = torch.load(args.restore_from)
@@ -181,7 +184,7 @@ def main():
         os.makedirs(args.pred_pic)
 
     test_loader = cityscapesDataSet(root=args.data_dir, list_path=args.list_path, set=args.split, img_size=(
-        2048, 1024), norm=False, ignore_label=args.ignore_label)
+        512, 256), norm=False, ignore_label=args.ignore_label)
     test_loader = DataLoader(test_loader, batch_size=1,
                              shuffle=False, num_workers=1)
     confusion_matrix = np.zeros((args.num_classes, args.num_classes))
@@ -194,7 +197,7 @@ def main():
         image, label, size, name = batch
         image = F.interpolate(image, size=(
             h, w), mode='bilinear', align_corners=True)
-        pred = predict(model, image.cuda(), (1024, 2048),
+        pred = predict(model, image.cuda(), (256, 512),
                        is_mirror=args.is_mirror, scales=[1])
         seg_pred_pic = colorize_mask(pred)
         seg_pred_pic.save(args.pred_pic+"/"+str(index)+".png")
