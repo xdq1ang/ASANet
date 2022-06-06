@@ -182,7 +182,7 @@ def eval(net,dataset,epoch,summary,model_name):
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     torch.backends.cudnn.benchmark = True
-    EPOCH=80
+    EPOCH=50
     TRAIN_TXT_PATH = r"datasets\gta5\train_list.txt"
     VAL_TXT_PATH = r"datasets\gta5\val_list.txt"
     SAVE_PATH=r"snapshots\train_source_model"
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     NUM_CLASSES = len(ID_TO_TRAINIED)
     LOSS = nn.CrossEntropyLoss(ignore_index=255)
     NUM_CHANNELS = 3
-    RESIZE = [512,256]
+    RESIZE = [256,512]
     dataset = DataSet(TRAIN_TXT_PATH,VAL_TXT_PATH,TRAIN_BATCH_SIZE,VAL_BATCH_SIZE,RESIZE,ID_TO_TRAINIED)
 
     train("UNet")
