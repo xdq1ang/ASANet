@@ -1,7 +1,7 @@
 import argparse
 
 
-METHOD = 'unet'
+METHOD = 'preTrainied_unet_ASANet'
 BACKBONE = 'unet'   # resnet
 BATCH_SIZE = 1
 ITER_SIZE = 1
@@ -23,8 +23,8 @@ NUM_STEPS = 15900
 NUM_STEPS_STOP = 15900  # early stopping
 POWER = 0.9
 RANDOM_SEED = 1234
-RESTORE_FROM = 'pretrained/GTA5_init.pth'
-RESUME = False
+RESTORE_FROM = r'snapshots\unet\GTA5KLASA_15900.pth'
+RESUME = r'snapshots\unet\GTA5KLASA_15900.pth'
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 2500
 SNAPSHOT_DIR = './snapshots/'
