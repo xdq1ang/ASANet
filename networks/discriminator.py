@@ -33,7 +33,7 @@ class FCDiscriminator(nn.Module):
 
 
 class EightwayASADiscriminator(nn.Module):
-    def __init__(self, num_classes, ndf=64,ppm = 'denseppm'):
+    def __init__(self, num_classes, ndf=64,ppm = 'ppm'):
         super(EightwayASADiscriminator, self).__init__()
         self.ppm = ppm
         self.conv1 = nn.Conv2d(

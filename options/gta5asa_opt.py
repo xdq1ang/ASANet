@@ -19,8 +19,8 @@ LEARNING_RATE_D = 1e-4
 
 MOMENTUM = 0.9
 NUM_CLASSES = 19
-NUM_STEPS = 15900
-NUM_STEPS_STOP = 15900  # early stopping
+NUM_STEPS = 20000
+NUM_STEPS_STOP = 20000  # early stopping
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = r'snapshots\train_source_model\UNet\model\model.pt'
