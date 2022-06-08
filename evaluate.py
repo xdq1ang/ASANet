@@ -26,10 +26,10 @@ import timeit
 BACKBONE = 'unet'
 IGNORE_LABEL = 255
 NUM_CLASSES = 19
-LOG_DIR = 'snapshots/unet'
+LOG_DIR = 'snapshots/preTrainied_unet_ASANet'
 DATA_DIRECTORY = 'datasets/cityscapes'
 DATA_LIST_PATH = 'datasets/cityscapes_list/val.txt'
-RESTORE_FROM = 'snapshots/unet/GTA5KLASA_15000.pth'
+RESTORE_FROM = 'snapshots/preTrainied_unet_ASANet/GTA5KLASA_15900.pth'
 # imageNet mean
 
 CLASS_NAMES = [
