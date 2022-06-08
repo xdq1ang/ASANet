@@ -3,7 +3,7 @@ import argparse
 
 METHOD = 'preTrainied_unet_ASANet'
 BACKBONE = 'unet'   # resnet
-BATCH_SIZE = 1
+BATCH_SIZE = 4
 ITER_SIZE = 1
 NUM_WORKERS = 8
 DATA_DIRECTORY = 'datasets/gta5'

@@ -216,11 +216,16 @@ def main():
             writer.add_scalar('learning_rate', lr, i_iter)
             writer.add_scalars("Loss", {
                                "Seg": loss_seg_value, "Adv": loss_adv_target_value, "Disc": loss_D_value}, i_iter)
-            pred_pic = torch.argmax(pred,dim=1).cpu().detach().numpy().squeeze()
-            pred_pic = colorize_mask(pred_pic).convert('RGB')
-            #pred_pic.show()
-            pred_pic = np.array(pred_pic)
-            writer.add_image("pred",pred_pic,dataformats="HWC",global_step = i_iter)
+            pred_pic_source = torch.argmax(F.softmax(pred,dim = 1),dim=1).cpu().detach().numpy().squeeze()
+            pred_pic_source = colorize_mask(pred_pic_source[0]).convert('RGB')
+            pred_pic_source = np.array(pred_pic_source)
+            writer.add_image("source_pred", pred_pic_source,dataformats="HWC", global_step = i_iter)
+
+            pred_pic_target = torch.argmax(F.softmax(pred_target, dim=1),dim = 1).cpu().detach().numpy().squeeze()
+            pred_pic_target = colorize_mask(pred_pic_target[0]).convert('RGB')
+            pred_pic_target = np.array(pred_pic_target)
+            writer.add_image("target_pred", pred_pic_target,dataformats="HWC", global_step = i_iter)
+
             loss_seg_value = 0
             loss_adv_target_value = 0
             loss_D_value = 0

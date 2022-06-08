@@ -12,11 +12,11 @@ import os
 from torchvision import transforms
 
 device = device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-SAVEPATH = r"snapshots\train_source_model\UNet\eval_on_cityscapes"
+SAVEPATH = r"snapshots\preTrainied_unet_ASANet"
 DATA_ROOT_PATH = r"datasets\cityscapes"
 TRAIN_TXT_PATH = r"datasets\cityscapes\train.txt"
 VAL_TXT_PATH = r"datasets\cityscapes\val.txt"
-TRAINIED_MODEL_PATH = r"snapshots\train_source_model\UNet\model\model.pt"
+TRAINIED_MODEL_PATH = r"snapshots\preTrainied_unet_ASANet\GTA5KLASA_20000.pth"
 TRAIN_BATCH_SIZE = 8
 VAL_BATCH_SIZE = 1
 RESIZE = [256,512]
