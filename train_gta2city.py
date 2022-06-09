@@ -123,10 +123,10 @@ def main():
                                                     pin_memory=True)
     targetloader_iter = enumerate(targetloader)
     # implement model.optim_parameters(args) to handle different models' lr setting
-    # optimizer = optim.SGD(model.optim_parameters(args),
-    #                       lr=args.learning_rate, 
-    #                       momentum=args.momentum, 
-    #                       weight_decay=args.weight_decay)
+    optimizer = optim.SGD(model.optim_parameters(args),
+                          lr=args.learning_rate, 
+                          momentum=args.momentum, 
+                          weight_decay=args.weight_decay)
 
     optimizer = optim.SGD(model.parameters(),
                         lr=args.learning_rate, 

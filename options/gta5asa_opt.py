@@ -1,7 +1,7 @@
 import argparse
 
 
-METHOD = 'preTrainied_unet_ASANet'
+METHOD = 'preTrainied_unet_ASANet\分割模型内部使用不同学习率'
 BACKBONE = 'unet'   # resnet
 BATCH_SIZE = 4
 ITER_SIZE = 1

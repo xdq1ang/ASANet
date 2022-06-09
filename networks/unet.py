@@ -1,3 +1,4 @@
+import imp
 import torch.nn as nn
 import torch
 class DownsampleLayer(nn.Module):
@@ -99,8 +100,56 @@ class UNet(nn.Module):
         out=self.o(out8)
             
         return out
+    
+    
+    def optim_parameters(self, args):
+        return [{'params': self.get_1x_lr_params_NOscale(), 'lr': args.learning_rate},
+                {'params': self.get_10x_lr_params(), 'lr': 10 * args.learning_rate}]
+
+    def get_1x_lr_params_NOscale(self):
+        """
+        This generator returns all the parameters of the net except for
+        the last classification layer. Note that for each batchnorm layer,
+        requires_grad is set to False in deeplab_resnet.py, therefore this function does not return
+        any batchnorm parameter
+        """
+        l = []
+        l.append(self.d1)
+        l.append(self.d2)
+        l.append(self.d3)
+        l.append(self.d4)
+        l.append(self.u1)
+        l.append(self.u2)
+        l.append(self.u3)
+        l.append(self.u4)
+        for i in range(len(l)):
+            for j in l[i].modules():
+                for k in j.parameters():
+                    if k.requires_grad:
+                        yield k
 
 
+    def get_10x_lr_params(self):
+        """
+        This generator returns all the parameters for the last layer of the net,
+        which does the classification of pixel into classes
+        """
+        b = []
+        b.append(self.o.parameters())
+        for j in range(len(b)):
+            for i in b[j]:
+                yield i
+
+# import sys,os
+# sys.path.append(os.getcwd())
+# from options import gta5asa_opt
+# import torch.optim as optim
+# model = UNet(n_channels=3, n_classes=20).cuda()
+# args = gta5asa_opt.get_arguments()
+# optimizer = optim.SGD(model.optim_parameters(args),
+#                           lr=args.learning_rate, 
+#                           momentum=args.momentum, 
+#                           weight_decay=args.weight_decay)
 
 
 
