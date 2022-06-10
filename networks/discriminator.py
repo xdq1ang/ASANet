@@ -33,7 +33,7 @@ class FCDiscriminator(nn.Module):
 
 
 class EightwayASADiscriminator(nn.Module):
-    def __init__(self, num_classes, ndf=64,ppm = 'ppm'):
+    def __init__(self, num_classes, ndf=64,ppm = None):
         super(EightwayASADiscriminator, self).__init__()
         self.ppm = ppm
         self.conv1 = nn.Conv2d(
@@ -43,14 +43,15 @@ class EightwayASADiscriminator(nn.Module):
             ndf*2, ndf*4, kernel_size=4, stride=2, padding=1)
         self.conv4 = nn.Conv2d(
             ndf*4, ndf*8, kernel_size=4, stride=2, padding=1)
+        out = ndf*8
         self.pool_size= [2,3,4,5]
         if self.ppm == 'ppm':
             self.ppm = PPM(ndf*8,64,[1,2,3,6])
-            ppm_out_channel = ndf*8+ndf*4
+            out = ndf*8+ndf*4
         elif self.ppm == 'denseppm':
             self.ppm = DensePPM(in_channels=ndf*8,reduction_dim= 32,pool_sizes=self.pool_size)
-            ppm_out_channel = ndf*8+32*((len(self.pool_size)*len(self.pool_size)+len(self.pool_size))//2) 
-        self.classifier = nn.Conv2d(ppm_out_channel, 1, kernel_size=4, stride=2, padding=1)
+            out = ndf*8+32*((len(self.pool_size)*len(self.pool_size)+len(self.pool_size))//2)
+        self.classifier = nn.Conv2d(out, 1, kernel_size=4, stride=2, padding=1)
         self.leaky_relu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
     def forward(self, x):
@@ -63,7 +64,7 @@ class EightwayASADiscriminator(nn.Module):
         x = self.leaky_relu(x)
         x = self.conv4(x)
         x = self.leaky_relu(x)
-        x = self.ppm(x)
+        #x = self.ppm(x)
         x = self.classifier(x)
         return x
 
