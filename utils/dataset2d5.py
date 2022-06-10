@@ -38,3 +38,23 @@ class SEGData(Dataset):
         label_copy = torch.tensor(label_copy,dtype=torch.long)
         return img, label_copy
 
+class SEGData1(Dataset):
+    def __init__(self,dataset,resize):
+        self.dataset=dataset
+        self.resize = resize
+    def __len__(self):
+        return len(self.dataset)
+    def __getitem__(self, item):
+        # 取出图片路径
+        img_data = self.dataset[item].split(' ')[0]
+        label_data = self.dataset[item].split(' ')[1].replace('\n','')
+        img = Image.open(img_data)
+        label = Image.open(label_data)
+
+        transform =transforms.Resize(size=self.resize,interpolation=0)
+        img = transform(img)
+        label = transform(label)
+        #转化为tensor
+        img = transforms.ToTensor()(img)
+        label = torch.tensor(np.array(label), dtype=torch.long) 
+        return img, label

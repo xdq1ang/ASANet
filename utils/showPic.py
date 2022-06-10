@@ -77,6 +77,52 @@ def savePic(img,lab,pre,savePath,summary, epoch):
         summary.add_figure(str(num), figure = figure, global_step = epoch)
     plt.close()
 
+def savePic1(img,lab,pre,COLOR_DICT,savePath,summary, epoch,tag):
+    imgSavePath = os.path.join(savePath,"img")
+    labSavePath = os.path.join(savePath,"lab")
+    preSavePath = os.path.join(savePath,"pre")
+    comparePath = os.path.join(savePath,"com")
+    if not os.path.exists(imgSavePath):
+        os.makedirs(imgSavePath)
+    if not os.path.exists(labSavePath):
+        os.makedirs(labSavePath)
+    if not os.path.exists(preSavePath):
+        os.makedirs(preSavePath)
+    if not os.path.exists(comparePath):
+        os.makedirs(comparePath)
+    num=len(os.listdir(imgSavePath))
+    num=num+1
+    img_pic = transforms.ToPILImage()(img.cpu())
+    pre_pic = transforms.ToPILImage()(pre.cpu().type(torch.uint8))
+    lab_pic = transforms.ToPILImage()(lab.cpu().type(torch.uint8))
+    pre_pic = colorful(pre_pic,COLOR_DICT)
+    lab_pic = colorful(lab_pic,COLOR_DICT)
+    img_pic.save(os.path.join(imgSavePath,str(num)+".png"))
+    lab_pic.save(os.path.join(labSavePath,str(num)+".png"))
+    pre_pic.save(os.path.join(preSavePath,str(num)+".png"))
+
+    figure = plt.figure()
+    plt.subplot(1,3,1)
+    plt.imshow(img_pic)
+    plt.title('img')
+    plt.xticks([])
+    plt.yticks([])
+    plt.subplot(1,3,2)
+    plt.imshow(lab_pic)
+    plt.title('label')
+    plt.xticks([])
+    plt.yticks([])
+    plt.subplot(1,3,3)
+    plt.imshow(pre_pic)
+    plt.title('predict')
+    plt.xticks([])
+    plt.yticks([])
+    plt.savefig(comparePath+"/"+str(num)+".png")
+    if(num<=50):
+        summary.add_figure(tag+"_"+str(num), figure = figure, global_step = epoch)
+    plt.close()
+
+
 
     
     

@@ -19,5 +19,5 @@ def create_list(data_path):
                     tf.write(img + ' ' + lab + '\n')
     print('数据列表生成完成')
 
-data_path = r'buildings'
+data_path = r'datasets\buildings'
 create_list(data_path)  # 生成数据列表
