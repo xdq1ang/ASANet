@@ -7,11 +7,13 @@ import torch
 
 
 
-def showPic(img,label,pre,savePath):
+def showPic(img,label,pre,color_dict,savePath):
     if not os.path.exists(savePath):
         os.mkdir(savePath)
     num=len(os.listdir(savePath))
     num=num+1
+    label = colorful(label,color_dict)
+    pre = colorful(pre,color_dict)
     plt.figure()
     plt.subplot(1,3,1)
     plt.imshow(img.permute(1,2,0))
