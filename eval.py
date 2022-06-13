@@ -98,8 +98,8 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     TRAIN_TXT_PATH = r"datasets\WHDLD\train_list.txt"
     VAL_TXT_PATH = r"datasets\WHDLD\val_list.txt"
-    SAVE_PATH=r"snapshots\buildings_WHDLD\val_Unet_on_tar"
-    model_path = r"datasets\buildings\训练日志\UNet\model\model.pt"
+    SAVE_PATH=r"snapshots\buildings_WHDLD_Transforms\val_udaUnet_on_tar"
+    model_path = r"snapshots\buildings_WHDLD_Transforms\model20000.pth"
     TRAIN_BATCH_SIZE = 12
     VAL_BATCH_SIZE = 1
     RESIZE = 128

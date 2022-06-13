@@ -1,9 +1,11 @@
+from ast import arg
 import torch
 import torchvision
 from torch.utils.data import  Dataset
 from PIL import  Image
 import numpy as np
 import torchvision.transforms as transforms  
+import torchvision.transforms.functional as f
 
 
 
@@ -50,11 +52,21 @@ class SEGData1(Dataset):
         label_data = self.dataset[item].split(' ')[1].replace('\n','')
         img = Image.open(img_data)
         label = Image.open(label_data)
+        # resize
+        # transform =transforms.Resize(size=self.resize,interpolation=0)
+        # img = transform(img)
+        # label = transform(label)
 
-        transform =transforms.Resize(size=self.resize,interpolation=0)
-        img = transform(img)
-        label = transform(label)
-        #转化为tensor
-        img = transforms.ToTensor()(img)
-        label = torch.tensor(np.array(label), dtype=torch.long) 
+        # 数据增强
+        img,label = self.argu(img,label)
         return img, label
+
+    def argu(self,img,mask):
+        i, j, h, w = transforms.RandomResizedCrop.get_params(img, scale=(0.3,1), ratio=(1,1))
+        img = f.resized_crop(img, i, j, h, w, self.resize, interpolation=Image.BICUBIC)
+        img = transforms.ToTensor()(img)
+
+        mask = f.resized_crop(mask, i, j, h, w, self.resize, interpolation=Image.BICUBIC)
+        mask = torch.tensor(np.array(mask), dtype=torch.long) 
+        return img,mask
+

@@ -1,7 +1,7 @@
 import argparse
 
 
-METHOD = 'buildings_WHDLD'
+METHOD = 'buildings_WHDLD_Transforms'
 BACKBONE = 'unet'   # resnet
 SRC_BATCH_SIZE = [32,1]
 TAR_BATCH_SIZE = [17,1]
