@@ -94,6 +94,8 @@ def savePic1(img,lab,pre,COLOR_DICT,savePath,summary, epoch,tag):
         os.makedirs(comparePath)
     num=len(os.listdir(imgSavePath))
     num=num+1
+    if (num == 50):
+        return
     img_pic = transforms.ToPILImage()(img.cpu())
     pre_pic = transforms.ToPILImage()(pre.cpu().type(torch.uint8))
     lab_pic = transforms.ToPILImage()(lab.cpu().type(torch.uint8))
