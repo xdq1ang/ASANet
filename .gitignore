@@ -1,5 +1,6 @@
 *.jpg
 *.png
+*.jpeg
 *.pt
 *.pth
 *.zip

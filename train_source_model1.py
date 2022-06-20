@@ -1,28 +1,59 @@
-from utils.dataset2d5 import SEGData
+from utils.dataset2d5 import SEGData1
 import torch
-from torch import nn
 import os
+from torch import nn
+from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from tqdm import tqdm
-from utils.showPic import showPic,savePic
-from utils.metrics import metric
 from networks.unet import UNet
-from utils.loss2 import CrossEntropyLoss2d,FocalLoss2d
+from networks.borderUnet import borderUnet
+from utils.showPic import savePic2
+from utils.metrics import metric
+from utils.colorful import colorful
+from torchvision import transforms
+from PIL import Image
+import torchvision.transforms.functional as f
+from utils.loss2 import FocalLoss2d
 
+
+class myDataSet(SEGData1):
+    def __getitem__(self, item):
+        # 取出图片路径
+        img_data = self.dataset[item].split(' ')[0]
+        label_data = self.dataset[item].split(' ')[1]
+        edge_data = self.dataset[item].split(' ')[2].replace('\n','')
+        img = Image.open(img_data)
+        label = Image.open(label_data)
+        edge = Image.open(edge_data)
+        img, label, edge = self.argu(img,label,edge)
+        return img, label, edge
+    def argu(self,img,mask,edge):
+        i, j, h, w = transforms.RandomResizedCrop.get_params(img, scale=(0.3,1), ratio=(1,1))
+        img = f.resized_crop(img, i, j, h, w, self.resize, interpolation=Image.BILINEAR)
+        img = transforms.ToTensor()(img)
+
+        mask = f.resized_crop(mask, i, j, h, w, self.resize, interpolation=Image.NEAREST)
+        mask = torch.tensor(np.array(mask), dtype=torch.long) 
+
+        edge = f.resized_crop(edge, i, j, h, w, self.resize, interpolation=Image.NEAREST)
+        edge = torch.tensor(np.array(edge), dtype=torch.long) 
+        return img,mask,edge
 
 
 
 def getModel(model_name):
     switch = {
     "UNet":lambda:UNet(n_channels=NUM_CHANNELS,n_classes=NUM_CLASSES).to(device),
+    "borderUet":lambda:borderUnet(n_channels=NUM_CHANNELS,n_classes=NUM_CLASSES).to(device)
     }
     return switch[model_name]()
 
+    
 class DataSet:
-    train_data = []
-    val_data = []
-    def __init__(self,train_txt_path,val_txt_path,train_batch_size,val_batch_size,resize,ID_TO_TRAINIED):
+    def __init__(self,train_txt_path,val_txt_path,train_batch_size,val_batch_size,resize):
+        self.train_data = []
+        self.val_data = []
         for line in open(train_txt_path):
             self.train_data.append(line)
         for line in open(val_txt_path):
@@ -30,15 +61,12 @@ class DataSet:
         self.resize = resize
         self.train_batch_size = train_batch_size
         self.val_batch_size = val_batch_size
-        self.id_to_trainied = ID_TO_TRAINIED
-        # self.trainLoader = torch.utils.data.DataLoader(self.train_SEGData, num_workers=0, batch_size=train_batch_size, shuffle=False,drop_last=True)
-        # self.valLoader = torch.utils.data.DataLoader(self.val_SEGData, num_workers=0, batch_size=val_batch_size, shuffle=False)
     def getTrainData(self):
-        self.train_SEGData = SEGData(self.train_data,self.resize,self.id_to_trainied)
+        self.train_SEGData = myDataSet(self.train_data,self.resize)
         return torch.utils.data.DataLoader(self.train_SEGData, num_workers=4, batch_size=self.train_batch_size, shuffle=False,drop_last=True)
     def getValData(self):
-        self.val_SEGData = SEGData(self.val_data,self.resize,self.id_to_trainied )
-        return torch.utils.data.DataLoader(self.val_SEGData, num_workers=4, batch_size=self.val_batch_size, shuffle=False)
+        self.val_SEGData = myDataSet(self.val_data,self.resize)
+        return torch.utils.data.DataLoader(self.val_SEGData, num_workers=4, batch_size=self.val_batch_size, shuffle=False,drop_last=True)
     def getTrainStep(self):
         return self.train_data.__len__()//self.train_batch_size
     def getValStep(self):
@@ -63,37 +91,33 @@ def train(model_name):
             t.set_description('Epoch %i' % epoch)
             train_epoch_score=[]
             train_epoch_loss=[]
+            train_epoch_border_loss = []
             net.train()
-            for i, (img,label) in enumerate(dataset.getTrainData()):
+            for i, (img,label,edge) in enumerate(dataset.getTrainData()):
                 img = img.to(device)
                 label = label.squeeze(dim = 1).to(device)      # (12,1,128,128)   -> (12,128,128)   
+                edge = edge.squeeze(dim = 1).to(device)  
                 optimizer.zero_grad()   
-                if model_name == "LANet":
-                    pred,aux_out=net(img)
-                    main_loss = CrossEntropyLoss2d()(pred, label)
-                    aux_loss = CrossEntropyLoss2d()(aux_out, label)
-                    loss = main_loss + 0.3*aux_loss
-                    predict=torch.argmax(pred, dim=1)
-                elif model_name=="PSPNet" or model_name== "DensePSPNet" or model_name == "ResNet":
-                    predict, main_loss, aux_loss = net(img, label)
-                    loss = main_loss + 0.4 * aux_loss
-                else:
-                    pred = net(img)
-                    loss=LOSS(pred,label) 
-                    predict = torch.argmax(pred, dim=1)   
-                    
-                loss.backward()
+                pred,border_pred=net(img)
+                loss=SEG_LOSS(pred,label)    #不需要”对标签进行one-hot编码。
+                border_loss = BORDER_LOSS(border_pred,edge)
+                predict=torch.argmax(pred, dim=1)
+                
+                loss_all = loss + 0.2*border_loss
+                loss_all.backward()
                 optimizer.step()
                 #性能评估
                 me = metric(predict,label,LABEL)
                 train_score =me.miou()
                 train_epoch_score.append(train_score)
-                train_epoch_loss.append(loss.item())
+                train_epoch_loss.append(loss_all.item())
+                train_epoch_border_loss.append(border_loss.item())
                 #设置tqdm输出
                 t.set_postfix(lr=optimizer.state_dict()['param_groups'][0]['lr'])
                 t.update(1)
             #保存训练日志
-            summary.add_scalar('train_celoss',np.array(train_epoch_loss).mean(),epoch)
+            summary.add_scalar('train_loss',np.array(train_epoch_loss).mean(),epoch)
+            summary.add_scalar('train_border_loss',np.array(train_epoch_border_loss).mean(),epoch)
             summary.add_scalar('train_score',np.array(train_epoch_score).mean(),epoch)
             summary.add_scalar('learning_rate',optimizer.state_dict()['param_groups'][0]['lr'],epoch)
         val_score, val_loss= eval(net,dataset,epoch,summary,model_name)
@@ -114,19 +138,14 @@ def train(model_name):
             eval_path = os.path.join(train_log_path,"eval_pic","best_"+str(best_id))
             with tqdm(total=dataset.getValStep()) as t2:
                 with torch.no_grad():
-                    for i, (img,label) in enumerate(dataset.getValData()):
+                    for i, (img,label,edge) in enumerate(dataset.getValData()):
                         img = img.to(device)    
                         label = label.squeeze(dim = 1).cuda()
-                        if model_name == "LANet":
-                            pred,_=net(img) 
-                            predict=torch.argmax(pred, dim=1)
-                        elif model_name == "PSPNet" or model_name== "DensePSPNet" or model_name == "ResNet":
-                            pred = net(img, label)
-                            predict=torch.argmax(pred, dim=1)
-                        else:
-                            pred=net(img)
-                            predict=torch.argmax(pred, dim=1)
-                        savePic(img.cpu()[0],label[0],predict[0],eval_path,summary,epoch)
+                        pred, border_pred=net(img)
+                        predict=torch.argmax(pred, dim=1)
+                        border_predict=torch.argmax(border_pred, dim=1)
+                        # savePic(img.cpu()[0],label[0],predict[0],COLOR_DICT,eval_path,summary,epoch)
+                        savePic2(img[0],label[0],edge[0],predict[0],border_predict[0],COLOR_DICT,eval_path,summary,epoch,tag="Test")
                         t2.update()
 
 
@@ -135,38 +154,33 @@ def eval(net,dataset,epoch,summary,model_name):
     eval_step = dataset.getValStep()
     val_epoch_score = []
     val_epoch_loss = []
+    val_epoch_border_loss = []
     val_iou = []
     net.eval()
     with torch.no_grad():
         with tqdm(total=eval_step) as t2:
-            for i, (img,label) in enumerate(dataset.getValData()):   
+            for i, (img,label,edge) in enumerate(dataset.getValData()):   
                 img = img.to(device) 
                 label = label.squeeze(dim = 1).cuda()
-                if model_name == "LANet":
-                    pred,aux_out = net (img) 
-                    main_loss = CrossEntropyLoss2d()(pred, label)
-                    aux_loss = CrossEntropyLoss2d()(aux_out, label)
-                    loss = main_loss + 0.3*aux_loss
-                    predict=torch.argmax(pred, dim=1)  
-                elif model_name == "PSPNet" or model_name== "DensePSPNet" or model_name == "ResNet":
-                    pred = net(img, label)
-                    loss = LOSS(pred,label)
-                    predict=torch.argmax(pred, dim=1)
-                else:
-                    pred=net(img)
-                    loss = LOSS(pred,label)
-                    predict=torch.argmax(pred, dim=1)
+                edge = edge.squeeze(dim = 1).cuda()
+                pred, border_pred=net(img)
+                loss = SEG_LOSS(pred,label)
+                border_loss = BORDER_LOSS(border_pred,edge)
+                loss_all = loss + 0.2*border_loss
+                predict=torch.argmax(pred, dim=1)
                 #性能评估
                 me = metric(predict,label,LABEL)
                 iou = list(me.iou())
                 val_iou.append(iou)
                 score = me.miou()
                 val_epoch_score.append(score)
-                val_epoch_loss.append(loss.item())
+                val_epoch_loss.append(loss_all.item())
+                val_epoch_border_loss.append(border_loss.item())
                 # savePic(img[0,:-1,:,:],label[0],predict[0],COLOR_DICT,train_log_path)
                 t2.update()
     val_iou = np.nanmean(np.array(val_iou),axis=0)
-    summary.add_scalar('val_celoss',np.array(val_epoch_loss).mean(),epoch)
+    summary.add_scalar('val_loss',np.array(val_epoch_loss).mean(),epoch)
+    summary.add_scalar('val_border_loss',np.array(val_epoch_border_loss).mean(),epoch)
     summary.add_scalar('val_score',np.array(val_epoch_score).mean(),epoch)
 
     for n in range(len(val_iou)):
@@ -180,23 +194,27 @@ def eval(net,dataset,epoch,summary,model_name):
 
 
 if __name__ == '__main__':
+    # WHDLD数据集lable为单通道图。值为[0,1]
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     torch.backends.cudnn.benchmark = True
-    EPOCH=50
-    TRAIN_TXT_PATH = r"datasets\gta5\train_list.txt"
-    VAL_TXT_PATH = r"datasets\gta5\val_list.txt"
+    EPOCH=80
+    TRAIN_TXT_PATH = r"datasets\buildings\train_list.txt"
+    VAL_TXT_PATH = r"datasets\buildings\val_list.txt"
     SAVE_PATH=r"snapshots\train_source_model1"
-    TRAIN_BATCH_SIZE = 8
+    TRAIN_BATCH_SIZE = 32
     VAL_BATCH_SIZE = 1
     LR = 0.001
-    ID_TO_TRAINIED =  {7: 0, 8: 1, 11: 2, 12: 3, 13: 4, 17: 5,
-                    19: 6, 20: 7, 21: 8, 22: 9, 23: 10, 24: 11, 25: 12,
-                    26: 13, 27: 14, 28: 15, 31: 16, 32: 17, 33: 18}
-    LABEL=ID_TO_TRAINIED.values()
-    NUM_CLASSES = len(ID_TO_TRAINIED)
-    LOSS = nn.CrossEntropyLoss(ignore_index=255)
-    NUM_CHANNELS = 3
-    RESIZE = [256,512]
-    dataset = DataSet(TRAIN_TXT_PATH,VAL_TXT_PATH,TRAIN_BATCH_SIZE,VAL_BATCH_SIZE,RESIZE,ID_TO_TRAINIED)
+    
+    COLOR_DICT = {  0 : [0, 0, 0] ,
+                    1 : [255, 0, 0] ,
+                    }
 
-    train("UNet")
+    LABEL=[0,1]
+    NUM_CLASSES = len(COLOR_DICT.keys())
+    BORDER_LOSS =  FocalLoss2d(gamma = 2.0)
+    SEG_LOSS = nn.CrossEntropyLoss()
+    NUM_CHANNELS = 3
+    RESIZE = 128
+    dataset = DataSet(TRAIN_TXT_PATH,VAL_TXT_PATH,TRAIN_BATCH_SIZE,VAL_BATCH_SIZE,RESIZE)
+
+    train("borderUet")

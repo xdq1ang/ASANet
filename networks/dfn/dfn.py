@@ -143,7 +143,7 @@ class DFN(nn.Module):
             aux_loss = aux_loss0 + aux_loss1 + aux_loss2 + aux_loss3
             return loss + self.alpha * aux_loss, aux_loss
 
-        return F.log_softmax(pred_out[-1], dim=1), F.log_softmax(boder_out[-1], dim=1)
+        return F.log_softmax(pred_out[-1], dim=1), nn.Sigmoid()(boder_out[-1])
 
 
 class DFNHead(nn.Module):

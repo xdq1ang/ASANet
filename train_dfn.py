@@ -18,7 +18,7 @@ def getModel(model_name):
     switch = {
     "DFN":lambda:DFN(NUM_CLASSES, criterion=nn.CrossEntropyLoss(reduction='mean',ignore_index=255),
                     aux_criterion=SigmoidFocalLoss(ignore_label=255, gamma=2.0, alpha=0.25), 
-                    alpha=0.1,
+                    alpha=0.5,
                     pretrained_model=None,
                     norm_layer=nn.BatchNorm2d).to(device),
     }
@@ -159,15 +159,16 @@ def eval(net,dataset,epoch,summary,model_name):
                 edge = edge.squeeze(dim = 1).to(device)
                 logits1,logits2=net(data = img)
                 predict1=torch.argmax(logits1, dim=1)
-                predict2=torch.argmax(logits2, dim=1)
+                pre2 = torch.zeros_like(logits2)
+                pre2[logits2 >= 0.5]=1
+                pre2[logits2 < 0.5]=0
                 #性能评估
                 me1 = metric(predict1,label,LABEL)
                 iou1 = list(me1.iou())
                 val_iou1.append(iou1)
                 score1 = me1.miou()
                 val_epoch_score1.append(score1)
-
-                me2 = metric(predict2,edge,LABEL)
+                me2 = metric(pre2[0][0],edge[0],LABEL)
                 iou2 = list(me2.iou())
                 val_iou2.append(iou2)
                 score2 = me2.miou()
@@ -199,7 +200,7 @@ if __name__ == '__main__':
     TRAIN_TXT_PATH = r"datasets\buildings\train_list.txt"
     VAL_TXT_PATH = r"datasets\buildings\val_list.txt"
     SAVE_PATH=r"snapshots\DFN"
-    TRAIN_BATCH_SIZE = 8
+    TRAIN_BATCH_SIZE = 2
     VAL_BATCH_SIZE = 1
     LR = 0.001
     COLOR_DICT = {0 : [0, 0, 0] ,
@@ -207,7 +208,7 @@ if __name__ == '__main__':
     LABEL=[0,1]
     NUM_CLASSES = len(LABEL)
     NUM_CHANNELS = 3
-    RESIZE = [128,128]
+    RESIZE = [512,512]
     dataset = DataSet(TRAIN_TXT_PATH,VAL_TXT_PATH,TRAIN_BATCH_SIZE,VAL_BATCH_SIZE,RESIZE)
 
     train("DFN")

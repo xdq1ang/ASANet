@@ -1,0 +1,4 @@
+waterDataSetAug\paperPic\img\63.jpeg waterDataSetAug\paperPic\label\63.png
+waterDataSetAug\paperPic\img\103.jpeg waterDataSetAug\paperPic\label\103.png
+waterDataSetAug\paperPic\img\140.jpeg waterDataSetAug\paperPic\label\140.png
+waterDataSetAug\paperPic\img\153.jpeg waterDataSetAug\paperPic\label\153.png
