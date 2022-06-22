@@ -366,7 +366,7 @@ def main():
             iou = list(me.iou())
             IOU_TAR.append(iou)
             tar_save__path = os.path.join(save_dir,"output_pic","epoch_"+str(epoch),"tar")
-            savePic2(tar_img.cpu()[0],labels[0],labels[0],pred_pic_target,border_pred_pic_target,args.color_dict,tar_save__path,writer,epoch,"tar")
+            savePic2(tar_img.cpu()[0],labels[0],edge[0],pred_pic_target,border_pred_pic_target,args.color_dict,tar_save__path,writer,epoch,"tar")
 
 
         this_iou_tar = np.nanmean(np.array(IOU_TAR),axis=0)
