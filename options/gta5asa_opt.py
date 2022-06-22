@@ -1,29 +1,29 @@
 import argparse
 
 
-METHOD = 'buildings_WHDLD_Transforms_ppm'
+METHOD = 'border_discriminator_Postdam_vaihingen'
 BACKBONE = 'unet'   # resnet
-SRC_BATCH_SIZE = [32,1]
-TAR_BATCH_SIZE = [17,1]
+SRC_BATCH_SIZE = [10,1]
+TAR_BATCH_SIZE = [3,1]
 ITER_SIZE = 1
 NUM_WORKERS = 8
-DATA_LIST_PATH = [r"datasets\buildings\train_list.txt",r"datasets\buildings\val_list.txt"]
+DATA_LIST_PATH = [r"datasets\Postdam\output\train_list.txt",r"datasets\Postdam\output\val_list.txt"]
 PSEUDO_ROOT = 'results/cityscapes_pseudo_CE80000'
 IGNORE_LABEL = 255
 INPUT_SIZE = '128,128'
-DATA_LIST_PATH_TARGET = [r"datasets\WHDLD\train_list.txt",r"datasets\WHDLD\val_list.txt"]
+DATA_LIST_PATH_TARGET = [r"datasets\ISPRS_semantic_labeling_Vaihingen\train_list.txt",r"datasets\ISPRS_semantic_labeling_Vaihingen\val_list.txt"]
 INPUT_SIZE_TARGET = '128,128'
 LEARNING_RATE = 0.00001
 LEARNING_RATE_D = 0.00001
 
 MOMENTUM = 0.9
-NUM_CLASSES = 2
+NUM_CLASSES = 6
 EPOCH = 100
 NUM_STEPS_STOP = 20000  # early stopping
 POWER = 0.9
 RANDOM_SEED = 1234
-RESTORE_FROM = r'datasets\buildings\训练日志\UNet\model\model.pt'
-RESUME = r'datasets\buildings\训练日志\UNet\model\model.pt'
+RESTORE_FROM = r'snapshots\train_source_postdam_model\borderUet\model\model.pt'
+RESUME = r"snapshots\train_source_postdam_model\borderUet\model\model.pt"
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 1
 SNAPSHOT_DIR = './snapshots/'
@@ -127,7 +127,12 @@ def get_arguments():
                         help="choose adaptation set.")
     parser.add_argument("--temperature", type=float, default=TEMPERATURE,
                         help="Which temperature to use.")
-    parser.add_argument("--color-dict", type=int, default= {  0 : [0, 0, 0] ,
-                                                              1 : [255, 0, 0] ,
+    parser.add_argument("--color-dict", type=int, default= {  0 : [255, 0, 0] ,
+                                                              1 : [0, 255, 0] ,
+                                                              2 : [255, 255, 0],
+                                                              3 : [0, 0, 255],
+                                                              4 : [0, 255, 255],
+                                                              5 : [255, 255, 255]
                                                               },help="Which temperature to use.")
+    parser.add_argument("--label", type=int, default= [0, 1, 2, 3, 4, 5],help="Which temperature to use.")                      
     return parser.parse_args()

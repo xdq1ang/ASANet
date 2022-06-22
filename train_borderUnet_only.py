@@ -103,7 +103,7 @@ def train(model_name):
                 border_loss = BORDER_LOSS(border_pred,edge)
                 predict=torch.argmax(pred, dim=1)
                 
-                loss_all = loss + 0.2*border_loss
+                loss_all = loss + border_loss
                 loss_all.backward()
                 optimizer.step()
                 #性能评估
@@ -198,18 +198,22 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     torch.backends.cudnn.benchmark = True
     EPOCH=80
-    TRAIN_TXT_PATH = r"datasets\buildings\train_list.txt"
-    VAL_TXT_PATH = r"datasets\buildings\val_list.txt"
-    SAVE_PATH=r"snapshots\train_source_model1"
+    TRAIN_TXT_PATH = r"datasets\Postdam\output\train_list.txt"
+    VAL_TXT_PATH = r"datasets\Postdam\output\val_list.txt"
+    SAVE_PATH=r"snapshots\train_source_postdam_model"
     TRAIN_BATCH_SIZE = 32
     VAL_BATCH_SIZE = 1
     LR = 0.001
     
-    COLOR_DICT = {  0 : [0, 0, 0] ,
-                    1 : [255, 0, 0] ,
+    COLOR_DICT = {  0 : [255, 0, 0] ,
+                    1 : [0, 255, 0] ,
+                    2 : [255, 255, 0],
+                    3 : [0, 0, 255],
+                    4 : [0, 255, 255],
+                    5 : [255, 255, 255]
                     }
 
-    LABEL=[0,1]
+    LABEL=[0,1,2,3,4,5]
     NUM_CLASSES = len(COLOR_DICT.keys())
     BORDER_LOSS =  FocalLoss2d(gamma = 2.0)
     SEG_LOSS = nn.CrossEntropyLoss()

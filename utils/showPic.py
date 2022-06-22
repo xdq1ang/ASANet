@@ -151,13 +151,18 @@ def savePic2(img,lab,edge,pre,pre2,COLOR_DICT,savePath,summary, epoch,tag):
         return
     img_pic = transforms.ToPILImage()(img.cpu())
     pre_pic = transforms.ToPILImage()(pre.cpu().type(torch.uint8))
-    pre2_pic = transforms.ToPILImage()(pre2.cpu().type(torch.uint8))
     lab_pic = transforms.ToPILImage()(lab.cpu().type(torch.uint8))
-    edge_pic = transforms.ToPILImage()(edge.cpu().type(torch.uint8))
+
+    edge = edge.cpu().type(torch.uint8)
+    edge[edge == 1] = 255
+    edge_pic = transforms.ToPILImage()(edge)
+
+    pre2 = pre2.cpu().type(torch.uint8)
+    pre2[pre2 == 1] = 255
+    pre2_pic = transforms.ToPILImage()(pre2)
+
     pre_pic = colorful(pre_pic,COLOR_DICT)
-    pre2_pic = colorful(pre2_pic,COLOR_DICT)
     lab_pic = colorful(lab_pic,COLOR_DICT)
-    edge_pic = colorful(edge_pic,COLOR_DICT)
     img_pic.save(os.path.join(imgSavePath,str(num)+".png"))
     lab_pic.save(os.path.join(labSavePath,str(num)+".png"))
     edge_pic.save(os.path.join(edgeSavePath,str(num)+".png"))
