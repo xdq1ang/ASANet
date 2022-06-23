@@ -1,7 +1,7 @@
 import argparse
 
 
-METHOD = 'border_discriminator_Postdam_vaihingen'
+METHOD = 'fea_discriminator_postdam_vaihingen'
 BACKBONE = 'unet'   # resnet
 SRC_BATCH_SIZE = [10,1]
 TAR_BATCH_SIZE = [3,1]
@@ -23,7 +23,7 @@ NUM_STEPS_STOP = 20000  # early stopping
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = r'snapshots\train_source_postdam_model\borderUet\model\model.pt'
-RESUME = r"snapshots\train_source_postdam_model\borderUet\model\model.pt"
+RESUME = r'snapshots\train_source_postdam_model\borderUet\model\model.pt'
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 1
 SNAPSHOT_DIR = './snapshots/'

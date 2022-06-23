@@ -98,7 +98,7 @@ def train(model_name):
                 label = label.squeeze(dim = 1).to(device)      # (12,1,128,128)   -> (12,128,128)   
                 edge = edge.squeeze(dim = 1).to(device)  
                 optimizer.zero_grad()   
-                pred,border_pred=net(img)
+                pred,border_pred,_=net(img)
                 loss=SEG_LOSS(pred,label)    #不需要”对标签进行one-hot编码。
                 border_loss = BORDER_LOSS(border_pred,edge)
                 predict=torch.argmax(pred, dim=1)
@@ -141,7 +141,7 @@ def train(model_name):
                     for i, (img,label,edge) in enumerate(dataset.getValData()):
                         img = img.to(device)    
                         label = label.squeeze(dim = 1).cuda()
-                        pred, border_pred=net(img)
+                        pred, border_pred,_=net(img)
                         predict=torch.argmax(pred, dim=1)
                         border_predict=torch.argmax(border_pred, dim=1)
                         # savePic(img.cpu()[0],label[0],predict[0],COLOR_DICT,eval_path,summary,epoch)
@@ -163,7 +163,7 @@ def eval(net,dataset,epoch,summary,model_name):
                 img = img.to(device) 
                 label = label.squeeze(dim = 1).cuda()
                 edge = edge.squeeze(dim = 1).cuda()
-                pred, border_pred=net(img)
+                pred, border_pred,_=net(img)
                 loss = SEG_LOSS(pred,label)
                 border_loss = BORDER_LOSS(border_pred,edge)
                 loss_all = loss + 0.2*border_loss
@@ -198,22 +198,26 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     torch.backends.cudnn.benchmark = True
     EPOCH=80
-    TRAIN_TXT_PATH = r"datasets\Postdam\output\train_list.txt"
-    VAL_TXT_PATH = r"datasets\Postdam\output\val_list.txt"
-    SAVE_PATH=r"snapshots\train_source_postdam_model"
+    TRAIN_TXT_PATH = r"datasets\GID5_dataset\train_list_water.txt"
+    VAL_TXT_PATH = r"datasets\GID5_dataset\val_list_water.txt"
+    SAVE_PATH=r"snapshots\train_source_gid5_model"
     TRAIN_BATCH_SIZE = 32
     VAL_BATCH_SIZE = 1
     LR = 0.001
     
-    COLOR_DICT = {  0 : [255, 0, 0] ,
-                    1 : [0, 255, 0] ,
-                    2 : [255, 255, 0],
-                    3 : [0, 0, 255],
-                    4 : [0, 255, 255],
-                    5 : [255, 255, 255]
-                    }
+    # COLOR_DICT = {  0 : [255, 0, 0] ,
+    #                 1 : [0, 255, 0] ,
+    #                 2 : [255, 255, 0],
+    #                 3 : [0, 0, 255],
+    #                 4 : [0, 255, 255],
+    #                 5 : [255, 255, 255]
+    #                 }
 
-    LABEL=[0,1,2,3,4,5]
+    COLOR_DICT = {  0 : [0, 0, 0] ,
+                1 : [255, 0, 0]
+                }
+
+    LABEL=[0,1]
     NUM_CLASSES = len(COLOR_DICT.keys())
     BORDER_LOSS =  FocalLoss2d(gamma = 2.0)
     SEG_LOSS = nn.CrossEntropyLoss()

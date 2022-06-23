@@ -1,24 +1,27 @@
+
 import os
 import random
 
 def create_list(data_path):
     root=data_path
     #image_path = os.path.join(data_path, 'img')
-    label_path = os.path.join(data_path, 'water')
+    label_path = os.path.join(data_path, 'labelAug')
     data_names = os.listdir(label_path)
     random.shuffle(data_names)  # 打乱数据
-    with open(os.path.join(data_path, 'train_list_water.txt'), 'w') as tf:
-        with open(os.path.join(data_path, 'val_list_water.txt'), 'w') as vf:
+    with open(os.path.join(data_path, 'train_list.txt'), 'w') as tf:
+        with open(os.path.join(data_path, 'val_list.txt'), 'w') as vf:
             for idx, data_name in enumerate(data_names):
-                data_name=data_name[:-4]+".jpg"
-                img = os.path.join(root,'img', data_name)
-                lab = os.path.join(root,'water', data_name.split('.')[0]+".png")
-                edge = os.path.join(root,'edge', data_name.split('.')[0]+".png")
+                name=data_name[0:-4].split("label")
+                image_name = name[0]+".jpeg"
+                label_name = data_name
+                img = os.path.join(root,'imgAug', image_name)
+                lab = os.path.join(root,'labelAug',label_name)
+                edge = os.path.join(root,'edge',label_name)
                 if idx % 7 == 0:  # 90%的作为训练集
                     vf.write(img + ' ' + lab + ' ' + edge + '\n')
                 else:
                     tf.write(img + ' ' + lab + ' ' + edge + '\n')
     print('数据列表生成完成')
 
-data_path = r'datasets/GID5_dataset'
+data_path = r'datasets\waterDataSet'
 create_list(data_path)  # 生成数据列表

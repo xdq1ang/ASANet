@@ -157,18 +157,18 @@ def main():
     cudnn.benchmark = True
 
     # init D
-    model_D = EightwayASADiscriminator(num_classes=args.num_classes)
+    model_seg_D = EightwayASADiscriminator(num_classes=args.num_classes)
     # model_D = FCDiscriminator(num_classes=args.num_classes)
-    model_D.train()
-    model_D.to(device)
+    model_seg_D.train()
+    model_seg_D.to(device)
 
-    model_border_D = borderDiscriminator(num_classes = 2)
-    model_border_D.train()
-    model_border_D.to(device)
+    model_fea_D = borderDiscriminator(in_channel = 256)
+    model_fea_D.train()
+    model_fea_D.to(device)
 
     log = open(os.path.join(save_dir,"model_structure.txt"), mode='a',encoding='utf-8')
     print("model: ", model,"\n", file=log)
-    print("model_D: ", model_D, file=log)
+    print("model_D: ", model_seg_D, file=log)
     log.close()
 
     pprint(vars(args))
@@ -194,13 +194,13 @@ def main():
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min',factor=0.8, patience = 6, verbose=True)
     optimizer.zero_grad()
 
-    optimizer_D = optim.Adam(model_D.parameters(), 
+    optimizer_D = optim.Adam(model_seg_D.parameters(), 
                             lr=args.learning_rate_D, 
                             betas=(0.9, 0.99))
     # scheduler_D = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_D, 'min',factor=0.8, patience = 6, verbose=True)
     optimizer_D.zero_grad()
 
-    optimizer_border_D = optim.Adam(model_border_D.parameters(), 
+    optimizer_border_D = optim.Adam(model_fea_D.parameters(), 
                             lr=args.learning_rate_D, 
                             betas=(0.9, 0.99))
     # scheduler_D = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_D, 'min',factor=0.8, patience = 6, verbose=True)
@@ -214,23 +214,32 @@ def main():
     target_label = 1
     start = timeit.default_timer()
     best_iou = 0
+    best_id = 0
     for epoch in range(args.EPOCH):
         print("training epoch:",epoch)
+        # seg model
         loss_seg_value = 0
         loss_border_value = 0
-        loss_adv_target_value = 0
-        loss_adv_target_border_value = 0
-        loss_D_value = 0
-        loss_D_border_value = 0
+
+        tar_seg_d_adv_loss_value = 0
+        src_seg_d_loss_value = 0
+        tar_seg_d_loss_value = 0
+        
+
+        tar_fea_d_adv_loss_value = 0
+        src_fea_d_loss_value = 0
+        tar_fea_d_loss_value = 0
+
+
         damping = 1-epoch/args.EPOCH
         lr = adjust_learning_rate(optimizer, epoch)
         adjust_learning_rate_D(optimizer_D, epoch)
 
         # train G
         # don't accumulate grads in D
-        for param in model_D.parameters():
+        for param in model_seg_D.parameters():
             param.requires_grad = False
-        for param in model_border_D.parameters():
+        for param in model_fea_D.parameters():
             param.requires_grad = False
         # train with source
         #_, batch = next(trainloader_iter)
@@ -240,8 +249,8 @@ def main():
             src_img = src_img.cuda()
             labels = labels.cuda()
             edge = edge.cuda()
-            pred, border_out = model(src_img)
-            pred = interp(pred)
+            src_pred, border_out, src_fea = model(src_img)
+            pred = interp(src_pred)
             # seg loss
             loss_seg = loss_calc(pred, labels)
             # border loss
@@ -255,69 +264,64 @@ def main():
 
             # train with target
             _, batch = next(tar_trainloader_iter)
-            tar_img ,tar_label, tar_edge= batch
+            tar_img ,tar_label, _= batch
             tar_img = tar_img.cuda()
             tar_label = tar_label.cuda()
-            tar_edge = tar_edge.cuda()
-            pred_target, border_out_target = model(tar_img)
+            # 目标域输出中间特征
+            pred_target, _, tar_fea = model(tar_img)  
             pred_target = interp_target(pred_target)
-            loss_border_target = border_loss_calc(border_out_target,tar_edge)
-            loss_border_target.backward(retain_graph=True)
             # 训练分割网络，使得分割结果让辨别器鉴别为源域分割结果
-            D_out = model_D(F.softmax(pred_target, dim=1))
-            loss_adv_target = bce_loss(D_out, torch.FloatTensor(D_out.data.size()).fill_(source_label).cuda())
-            loss_adv = loss_adv_target * args.lambda_adv_target1 * damping
-            loss_adv.backward(retain_graph=True)
-            loss_adv_target_value += loss_adv_target.item()
-            # 训练分割网络，使得边界结果输入鉴别器鉴别为源域结果
-            D_out_border = model_border_D(F.softmax(border_out_target,dim = 1))
-            loss_adv_tar_border = bce_loss(D_out_border,torch.FloatTensor(D_out_border.data.size()).fill_(source_label).cuda())
-            loss_adv_border = loss_adv_tar_border * args.lambda_adv_target1 * damping
-            loss_adv_border.backward(retain_graph=True)
-            loss_adv_target_border_value += loss_adv_border.item()
-            # 损失求和
-            # loss_adv_loss_adv_border = loss_adv + loss_adv_border
-            # loss_adv_loss_adv_border.backward()
+            tar_seg_d_out = model_seg_D(F.softmax(pred_target, dim=1))
+            tar_seg_d_adv_loss = bce_loss(tar_seg_d_out, torch.FloatTensor(tar_seg_d_out.data.size()).fill_(source_label).cuda())
+            tar_seg_d_adv_loss = tar_seg_d_adv_loss * args.lambda_adv_target1 * damping
+            tar_seg_d_adv_loss.backward(retain_graph=True)
+            tar_seg_d_adv_loss_value += tar_seg_d_adv_loss.item()
+            # 训练分割网络，使得中间特征输入鉴别器鉴别为源域结果
+            tar_fea_d_out = model_fea_D(tar_fea)
+            tar_fea_d_adv_loss = bce_loss(tar_fea_d_out,torch.FloatTensor(tar_fea_d_out.data.size()).fill_(source_label).cuda())
+            tar_fea_d_adv_loss = tar_fea_d_adv_loss * args.lambda_adv_target1 * damping
+            tar_fea_d_adv_loss.backward(retain_graph=True)
+            tar_fea_d_adv_loss_value += tar_fea_d_adv_loss.item()
 
             # train D
             # bring back requires_grad
-            for param in model_D.parameters():
+            for param in model_seg_D.parameters():
                 param.requires_grad = True
-            for param in model_border_D.parameters():
+            for param in model_fea_D.parameters():
                 param.requires_grad = True
             # train with source
-            pred = pred.detach()
-            D_out = model_D(F.softmax(pred, dim=1))
-            loss_D1 = bce_loss(D_out, torch.FloatTensor(D_out.data.size()).fill_(source_label).to(device))
-            loss_D1 = loss_D1 / 2
-            loss_D1.backward(retain_graph=True)
-            loss_D_value += loss_D1.item()
+            src_pred = src_pred.detach()
+            src_seg_d_out = model_seg_D(F.softmax(src_pred, dim=1))
+            src_seg_d_loss = bce_loss(src_seg_d_out, torch.FloatTensor(src_seg_d_out.data.size()).fill_(source_label).to(device))
+            src_seg_d_loss = src_seg_d_loss / 2
+            src_seg_d_loss.backward(retain_graph=True)
+            src_seg_d_loss_value += src_seg_d_loss.item()
 
-            border_out = border_out.detach()
-            D_out_border = model_border_D(F.softmax(border_out, dim=1))
-            loss_D1_border = bce_loss(D_out, torch.FloatTensor(D_out_border.data.size()).fill_(source_label).to(device))
-            loss_D1_border = loss_D1_border / 2
-            loss_D1_border.backward(retain_graph=True)
-            loss_D_border_value += loss_D1_border.item()
+            src_fea = src_fea.detach(retain_graph=True)
+            src_fea_d_out = model_fea_D(src_fea)
+            src_fea_d_loss = bce_loss(src_fea_d_out, torch.FloatTensor(src_fea_d_out.data.size()).fill_(source_label).to(device))
+            src_fea_d_loss = src_fea_d_loss / 2
+            src_fea_d_loss.backward(retain_graph=True)
+            src_fea_d_loss_value += src_fea_d_loss.item()
             # # 损失求和
             # loss_D1_loss_D1_border = loss_D1 + loss_D1_border
             # loss_D1_loss_D1_border.backward()
 
             # train with target
             pred_target = pred_target.detach()
-            D_out1 = model_D(F.softmax(pred_target, dim=1))
-            loss_D1 = bce_loss(D_out1, torch.FloatTensor(D_out1.data.size()).fill_(target_label).to(device))
-            loss_D1 = loss_D1 / 2
-            loss_D1.backward(retain_graph=True)
-            loss_D_value += loss_D1.item()
+            tar_seg_d_out = model_seg_D(F.softmax(pred_target, dim=1))
+            tar_seg_d_loss = bce_loss(tar_seg_d_out, torch.FloatTensor(tar_seg_d_out.data.size()).fill_(target_label).to(device))
+            tar_seg_d_loss = tar_seg_d_loss / 2
+            tar_seg_d_loss.backward(retain_graph=True)
+            tar_seg_d_loss_value += tar_seg_d_loss.item()
             
 
-            border_out_target = border_out_target.detach()
-            D_out1_border = model_border_D(F.softmax(border_out_target, dim=1))
-            loss_D1_border = bce_loss(D_out1_border, torch.FloatTensor(D_out1_border.data.size()).fill_(target_label).to(device))
-            loss_D1_border = loss_D1_border / 2
-            loss_D1_border.backward(retain_graph=True)
-            loss_D_border_value += loss_D1_border.item()
+            tar_fea = tar_fea.detach()
+            tar_fea_d_out = model_fea_D(tar_fea)
+            tar_fea_d_loss = bce_loss(tar_fea_d_out, torch.FloatTensor(tar_fea_d_out.data.size()).fill_(target_label).to(device))
+            tar_fea_d_loss = tar_fea_d_loss / 2
+            tar_fea_d_loss.backward()
+            tar_fea_d_loss_value += tar_fea_d_loss.item()
             
             optimizer.step()
             optimizer_D.step()
@@ -331,12 +335,11 @@ def main():
         # scheduler.step(loss_seg_value/(i+1))
         # scheduler_D.step(loss_D_value/(i+1))
 
-        print("loss_seg = {} loss_border = {}".format(loss_seg_value/(i+1),loss_border_value/(i+1)))
-        print("DIS1: loss_adv1 = {} loss_D1 = {}".format(loss_adv_target_value/(i+1), loss_D_value/(i+1)))
-        print("DIS1: loss_adv2 = {} loss_D2 = {}".format(loss_adv_target_border_value/(i+1), loss_D_border_value/(i+1)))
+
+
         writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], epoch)
-        writer.add_scalars("DIS1 LOSS", {"ADV": loss_adv_target_value/(i+1), "DIS": loss_D_value/(i+1)}, epoch)
-        writer.add_scalars("DIS2 LOSS", {"ADV": loss_adv_target_border_value/(i+1), "DIS": loss_D_border_value/(i+1)}, epoch)
+        writer.add_scalars("DIS_SEG LOSS", {"tar_seg_d_adv_loss_value": tar_seg_d_adv_loss_value/(i+1), "src_seg_d_loss_value": src_seg_d_loss_value/(i+1),"tar_seg_d_loss_value":tar_seg_d_loss_value/(i+1)}, epoch)
+        writer.add_scalars("DIS_FEA LOSS", {"tar_fea_d_adv_loss_value": tar_fea_d_adv_loss_value/(i+1), "src_fea_d_loss_value": src_fea_d_loss_value/(i+1),"tar_fea_d_loss_value":tar_fea_d_loss_value/(i+1)}, epoch)
         writer.add_scalars("SEG LOSS", {"SEG": loss_seg_value/(i+1)}, epoch)
         model.eval()
         IOU_SRC = []
@@ -346,7 +349,7 @@ def main():
             src_img = src_img.cuda()
             labels = labels.cuda()
             edge = edge.cuda()
-            pred_pic_source, border_pred_pic_source = model(src_img)
+            pred_pic_source, border_pred_pic_source, _ = model(src_img)
             pred_pic_source = torch.argmax(F.softmax(pred_pic_source,dim = 1),dim=1).squeeze()
             border_pred_pic_source = torch.argmax(F.softmax(border_pred_pic_source,dim = 1),dim=1).squeeze()
 
@@ -359,7 +362,7 @@ def main():
             tar_img, labels,edge= batch
             tar_img = tar_img.cuda()
             labels = labels.cuda()
-            pred_pic_target, border_pred_pic_target = model(tar_img)
+            pred_pic_target, border_pred_pic_target,_ = model(tar_img)
             pred_pic_target = torch.argmax(F.softmax(pred_pic_target, dim=1),dim = 1).squeeze()
             border_pred_pic_target = torch.argmax(F.softmax(border_pred_pic_target, dim=1),dim = 1).squeeze()
             me = metric(pred_pic_target,labels,args.label)
@@ -372,16 +375,19 @@ def main():
         this_iou_tar = np.nanmean(np.array(IOU_TAR),axis=0)
         if this_iou_tar[1] > best_iou:
             best_iou = this_iou_tar[1]
+            best_id = epoch
         print("The miou of this epoch is: ", this_iou_tar)
-        print("The best miou is: ", best_iou,"\nThe best epoch is: ", epoch)
+        print("The best miou is: ", best_iou,"\nThe best epoch is: ", best_id)
 
         print('taking snapshot ...')
         torch.save(model.state_dict(), osp.join(save_dir, 'model' + str(epoch) + '.pth'))
-        torch.save(model_D.state_dict(), osp.join(save_dir, 'model' + str(epoch) + '_D.pth'))
+        torch.save(model_seg_D.state_dict(), osp.join(save_dir, 'model' + str(epoch) + '_seg_D.pth'))
+        torch.save(model_fea_D.state_dict(), osp.join(save_dir, 'model' + str(epoch) + '_fea_D.pth'))
 
         print('taking snapshot ...')
         torch.save(model.state_dict(), osp.join(save_dir, 'model' + str(args.num_steps_stop) + '.pth'))
-        torch.save(model_D.state_dict(), osp.join(save_dir, 'model' + str(args.num_steps_stop) + '_D.pth'))
+        torch.save(model_seg_D.state_dict(), osp.join(save_dir, 'model' + str(args.num_steps_stop) + '_seg_D.pth'))
+        torch.save(model_fea_D.state_dict(), osp.join(save_dir, 'model' + str(epoch) + '_fea_D.pth'))
 
 
 if __name__ == '__main__':

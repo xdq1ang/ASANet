@@ -114,7 +114,7 @@ class borderUnet(nn.Module):
         out8=self.u4(out7,out_1)
         out=self.o(out8)
             
-        return out, boreder_out
+        return out, boreder_out, out7
     
     
     def optim_parameters(self, args):
