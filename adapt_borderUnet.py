@@ -50,7 +50,7 @@ class myDataSet(SEGData1):
             return img, label, edge
         else:
             img, label, edge = self.argu(img,label,None)
-            return img, label
+            return img, label, self.edge
     def argu(self,img,mask,edge):
         i, j, h, w = transforms.RandomResizedCrop.get_params(img, scale=(0.3,1), ratio=(1,1))
         img = f.resized_crop(img, i, j, h, w, self.resize, interpolation=Image.BILINEAR)
@@ -175,7 +175,7 @@ def main():
     if not os.path.exists(args.snapshot_dir):
         os.makedirs(args.snapshot_dir)
     src_dataset = DataSet(args.data_list[0],args.data_list[1],args.src_batch_size[0],args.src_batch_size[1],input_size,True)
-    tar_dataset = DataSet(args.data_list_target[0],args.data_list_target[1],args.tar_batch_size[0],args.tar_batch_size[1],input_size_target,True)
+    tar_dataset = DataSet(args.data_list_target[0],args.data_list_target[1],args.tar_batch_size[0],args.tar_batch_size[1],input_size_target,False)
     src_trainloader = src_dataset.getTrainData()
     tar_trainloader = tar_dataset.getTrainData()
 
@@ -297,7 +297,7 @@ def main():
             src_seg_d_loss.backward(retain_graph=True)
             src_seg_d_loss_value += src_seg_d_loss.item()
 
-            src_fea = src_fea.detach(retain_graph=True)
+            src_fea = src_fea.detach()
             src_fea_d_out = model_fea_D(src_fea)
             src_fea_d_loss = bce_loss(src_fea_d_out, torch.FloatTensor(src_fea_d_out.data.size()).fill_(source_label).to(device))
             src_fea_d_loss = src_fea_d_loss / 2
@@ -369,7 +369,7 @@ def main():
             iou = list(me.iou())
             IOU_TAR.append(iou)
             tar_save__path = os.path.join(save_dir,"output_pic","epoch_"+str(epoch),"tar")
-            savePic2(tar_img.cpu()[0],labels[0],edge[0],pred_pic_target,border_pred_pic_target,args.color_dict,tar_save__path,writer,epoch,"tar")
+            savePic2(tar_img.cpu()[0],labels[0],labels[0],pred_pic_target,border_pred_pic_target,args.color_dict,tar_save__path,writer,epoch,"tar")
 
 
         this_iou_tar = np.nanmean(np.array(IOU_TAR),axis=0)
